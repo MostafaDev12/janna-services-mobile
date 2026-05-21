@@ -1,4 +1,4 @@
-package com.example.janna_services
+package com.jannaoctober.services
 
 import io.flutter.embedding.android.FlutterActivity
 

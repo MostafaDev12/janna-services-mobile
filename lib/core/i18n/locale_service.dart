@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,7 +15,7 @@ class LocaleService extends ChangeNotifier {
   static const String _key = 'app_locale_v1';
   static const List<String> supportedCodes = ['en', 'ar'];
 
-  Locale _locale = const Locale('en');
+  Locale _locale = const Locale('ar');
   Locale get locale => _locale;
 
   /// Current language code as it should be sent to the API (`en` or `ar`).
@@ -29,8 +28,9 @@ class LocaleService extends ChangeNotifier {
 
   /// Resolves initial locale in this order:
   ///   1. Persisted choice from `shared_preferences`
-  ///   2. Device locale (if Arabic)
-  ///   3. English fallback
+  ///   2. Device locale (if English)
+  ///   3. Arabic fallback (this is an app for Janna October residents,
+  ///      who are overwhelmingly Arabic-speaking)
   Future<void> load({Locale? deviceLocale}) async {
     if (_loaded) return;
     final prefs = await SharedPreferences.getInstance();
@@ -38,8 +38,8 @@ class LocaleService extends ChangeNotifier {
     if (stored != null && supportedCodes.contains(stored)) {
       _locale = Locale(stored);
     } else if (deviceLocale != null &&
-        deviceLocale.languageCode == 'ar') {
-      _locale = const Locale('ar');
+        deviceLocale.languageCode == 'en') {
+      _locale = const Locale('en');
     }
     _loaded = true;
     notifyListeners();

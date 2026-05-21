@@ -1,6 +1,14 @@
 name: janna_services
 description: "Janna October Services - residents' services directory."
 publish_to: 'none'
+
+# version: <semantic-version>+<build-number>
+# Increment the build number (after the +) for every Play upload, even for
+# the same semantic version. Examples:
+#   1.0.0+1   first release
+#   1.0.1+2   patch release
+#   1.1.0+3   minor release
+#   2.0.0+4   major release
 version: 1.0.0+1
 
 environment:
@@ -32,7 +40,20 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.2
 
+  # Launcher icon generator. Drop a 1024x1024 PNG at
+  # assets/icon/app_icon.png and run:
+  #   dart run flutter_launcher_icons
+  # to regenerate the Android mipmap-* set from a single source image.
+  flutter_launcher_icons: ^0.13.1
+
 flutter:
   uses-material-design: true
-  # assets:
-  #   - assets/images/
+  assets:
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true

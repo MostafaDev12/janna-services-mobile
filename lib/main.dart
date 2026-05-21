@@ -62,6 +62,7 @@ class JannaApp extends StatelessWidget {
           supportedLocales: const [Locale('en'), Locale('ar')],
           // NOT `const` — the `.delegate` getters are runtime values,
           // not compile-time constants.
+          // ignore: prefer_const_literals_to_create_immutables
           localizationsDelegates: <LocalizationsDelegate<dynamic>>[
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,

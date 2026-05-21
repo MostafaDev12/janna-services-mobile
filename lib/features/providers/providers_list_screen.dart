@@ -10,6 +10,8 @@ import '../../shared/widgets/error_view.dart';
 import '../../shared/widgets/loading_view.dart';
 import '../../shared/widgets/provider_card.dart';
 import '../categories/categories_repository.dart';
+import '../important_numbers/important_numbers_screen.dart';
+import '../search/search_screen.dart';
 import 'providers_repository.dart';
 
 class ProvidersListScreen extends StatefulWidget {
@@ -42,6 +44,10 @@ class _ProvidersListScreenState extends State<ProvidersListScreen> {
   Object? _error;
   int _page = 1;
   int _lastPage = 1;
+
+  /// How many of the top categories are shown directly in the horizontal
+  /// row; the rest fall under the "More" bottom sheet.
+  static const int _primaryCategoriesCount = 4;
 
   @override
   void initState() {
@@ -129,27 +135,65 @@ class _ProvidersListScreenState extends State<ProvidersListScreen> {
     }
   }
 
+  void _applyChange({
+    String? Function(String?)? category,
+    String? Function(String?)? area,
+    bool Function(bool)? featured,
+  }) {
+    setState(() {
+      if (category != null) _categorySlug = category(_categorySlug);
+      if (area != null) _areaType = area(_areaType);
+      if (featured != null) _featured = featured(_featured);
+    });
+    _load();
+  }
+
+  /// Emergency Numbers comes back from the API as a Category row, but it does
+  /// not behave like a regular provider list (it links to phone numbers, not
+  /// businesses). We hide it from the categories chip row and surface it as a
+  /// dedicated quick action instead.
+  bool _isEmergencyCategory(Category c) {
+    final slug = c.slug.toLowerCase();
+    final name = c.name.toLowerCase();
+    return slug.contains('emergency') ||
+        name.contains('emergency') ||
+        name.contains('طوار'); // matches both "طوارئ" and "الطوارئ"
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filtered =
+        _categories.where((c) => !_isEmergencyCategory(c)).toList();
+    final primary = filtered.take(_primaryCategoriesCount).toList();
+    final overflow = filtered.skip(_primaryCategoriesCount).toList();
+    final hasEmergency = _categories.any(_isEmergencyCategory);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(AppStrings.of(context, 'providers')),
       ),
       body: Column(
         children: [
-          _FilterBar(
-            categories: _categories,
+          _CompactFilters(
+            primaryCategories: primary,
+            overflowCategories: overflow,
             selectedSlug: _categorySlug,
             areaType: _areaType,
             featured: _featured,
-            onChange: (cat, area, feat) {
-              setState(() {
-                _categorySlug = cat;
-                _areaType = area;
-                _featured = feat;
-              });
-              _load();
-            },
+            showEmergencyAction: hasEmergency,
+            onFeaturedToggle: () =>
+                _applyChange(featured: (v) => !v),
+            onAreaSelected: (next) =>
+                _applyChange(area: (cur) => cur == next ? null : next),
+            onCategorySelected: (slug) => _applyChange(
+              category: (cur) => cur == slug ? null : slug,
+            ),
+            onOpenSearch: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
+            onOpenEmergencyNumbers: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ImportantNumbersScreen()),
+            ),
           ),
           Expanded(child: _buildList()),
         ],
@@ -190,89 +234,390 @@ class _ProvidersListScreenState extends State<ProvidersListScreen> {
   }
 }
 
-class _FilterBar extends StatelessWidget {
-  const _FilterBar({
-    required this.categories,
+/// All filter chrome above the grid: search bar, area/featured segmented
+/// chips, horizontally-scrollable categories with overflow into a "More"
+/// bottom sheet, plus the Emergency Numbers quick action.
+class _CompactFilters extends StatelessWidget {
+  const _CompactFilters({
+    required this.primaryCategories,
+    required this.overflowCategories,
     required this.selectedSlug,
     required this.areaType,
     required this.featured,
-    required this.onChange,
+    required this.showEmergencyAction,
+    required this.onFeaturedToggle,
+    required this.onAreaSelected,
+    required this.onCategorySelected,
+    required this.onOpenSearch,
+    required this.onOpenEmergencyNumbers,
   });
 
-  final List<Category> categories;
+  final List<Category> primaryCategories;
+  final List<Category> overflowCategories;
   final String? selectedSlug;
   final String? areaType;
   final bool featured;
-  final void Function(String? categorySlug, String? areaType, bool featured)
-      onChange;
+  final bool showEmergencyAction;
+
+  final VoidCallback onFeaturedToggle;
+  final ValueChanged<String> onAreaSelected;
+  final ValueChanged<String?> onCategorySelected;
+  final VoidCallback onOpenSearch;
+  final VoidCallback onOpenEmergencyNumbers;
+
+  bool get _isOverflowSelected =>
+      selectedSlug != null &&
+      overflowCategories.any((c) => c.slug == selectedSlug);
 
   @override
   Widget build(BuildContext context) {
-    // Two `Wrap`s separated by a thin divider so the chips flow onto
-    // multiple rows on narrow screens instead of clipping off the side.
-    // Row 1 = type filters (featured + area); Row 2 = categories.
-    final categoryChips = <Widget>[
-      ChoiceChip(
-        label: Text(AppStrings.of(context, 'all_categories')),
-        selected: selectedSlug == null,
-        onSelected: (_) => onChange(null, areaType, featured),
-      ),
-      for (final c in categories)
-        ChoiceChip(
-          label: Text(c.name),
-          selected: selectedSlug == c.slug,
-          onSelected: (v) => onChange(v ? c.slug : null, areaType, featured),
-        ),
-    ];
-
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          _SearchTapBar(onTap: onOpenSearch),
+          const SizedBox(height: 8),
+          _AreaFeaturedRow(
+            featured: featured,
+            areaType: areaType,
+            onFeaturedToggle: onFeaturedToggle,
+            onAreaSelected: onAreaSelected,
+          ),
+          const SizedBox(height: 8),
+          _CategoryRow(
+            primaryCategories: primaryCategories,
+            hasOverflow: overflowCategories.isNotEmpty,
+            selectedSlug: selectedSlug,
+            isOverflowSelected: _isOverflowSelected,
+            onCategorySelected: onCategorySelected,
+            onMore: () => _openMoreSheet(context),
+          ),
+          if (showEmergencyAction) ...[
+            const SizedBox(height: 8),
+            _EmergencyNumbersAction(onTap: onOpenEmergencyNumbers),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openMoreSheet(BuildContext context) async {
+    final picked = await showModalBottomSheet<String?>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _MoreCategoriesSheet(
+        categories: overflowCategories,
+        selectedSlug: selectedSlug,
+      ),
+    );
+    // The sheet returns: a category slug to select, '' to mean "clear", or
+    // null when dismissed without choosing — leave selection unchanged.
+    if (picked == null) return;
+    onCategorySelected(picked.isEmpty ? null : picked);
+  }
+}
+
+class _SearchTapBar extends StatelessWidget {
+  const _SearchTapBar({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.background,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
             children: [
-              FilterChip(
-                label: Text(AppStrings.of(context, 'featured')),
-                selected: featured,
-                onSelected: (v) => onChange(selectedSlug, areaType, v),
-              ),
-              ChoiceChip(
-                label: Text(AppStrings.of(context, 'inside_compound')),
-                selected: areaType == 'inside_compound',
-                onSelected: (v) => onChange(
-                  selectedSlug,
-                  v ? 'inside_compound' : null,
-                  featured,
-                ),
-              ),
-              ChoiceChip(
-                label: Text(AppStrings.of(context, 'near_compound')),
-                selected: areaType == 'near_compound',
-                onSelected: (v) => onChange(
-                  selectedSlug,
-                  v ? 'near_compound' : null,
-                  featured,
+              const Icon(Icons.search_rounded,
+                  size: 20, color: AppColors.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppStrings.of(context, 'search_hint'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(height: 1),
+        ),
+      ),
+    );
+  }
+}
+
+class _AreaFeaturedRow extends StatelessWidget {
+  const _AreaFeaturedRow({
+    required this.featured,
+    required this.areaType,
+    required this.onFeaturedToggle,
+    required this.onAreaSelected,
+  });
+
+  final bool featured;
+  final String? areaType;
+  final VoidCallback onFeaturedToggle;
+  final ValueChanged<String> onAreaSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    // Horizontal scroll so it never wraps to a second row on narrow phones.
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _CompactChip(
+            label: AppStrings.of(context, 'featured'),
+            icon: Icons.star_rounded,
+            selected: featured,
+            onTap: onFeaturedToggle,
           ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: categoryChips,
+          const SizedBox(width: 8),
+          _CompactChip(
+            label: AppStrings.of(context, 'inside_compound'),
+            selected: areaType == 'inside_compound',
+            onTap: () => onAreaSelected('inside_compound'),
+          ),
+          const SizedBox(width: 8),
+          _CompactChip(
+            label: AppStrings.of(context, 'near_compound'),
+            selected: areaType == 'near_compound',
+            onTap: () => onAreaSelected('near_compound'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CategoryRow extends StatelessWidget {
+  const _CategoryRow({
+    required this.primaryCategories,
+    required this.hasOverflow,
+    required this.selectedSlug,
+    required this.isOverflowSelected,
+    required this.onCategorySelected,
+    required this.onMore,
+  });
+
+  final List<Category> primaryCategories;
+  final bool hasOverflow;
+  final String? selectedSlug;
+  final bool isOverflowSelected;
+  final ValueChanged<String?> onCategorySelected;
+  final VoidCallback onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _CompactChip(
+            label: AppStrings.of(context, 'all'),
+            selected: selectedSlug == null,
+            onTap: () => onCategorySelected(null),
+          ),
+          for (final c in primaryCategories) ...[
+            const SizedBox(width: 8),
+            _CompactChip(
+              label: c.name,
+              selected: selectedSlug == c.slug,
+              onTap: () => onCategorySelected(c.slug),
+            ),
+          ],
+          if (hasOverflow) ...[
+            const SizedBox(width: 8),
+            _CompactChip(
+              label: AppStrings.of(context, 'more'),
+              icon: Icons.tune_rounded,
+              // Highlight "More" while a category from inside the sheet is
+              // the active filter, so the user can see at a glance that
+              // something behind it is selected.
+              selected: isOverflowSelected,
+              onTap: onMore,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EmergencyNumbersAction extends StatelessWidget {
+  const _EmergencyNumbersAction({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.accent.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.local_phone_rounded,
+                  size: 18, color: AppColors.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppStrings.of(context, 'important_numbers'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 18, color: AppColors.textSecondary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small pill used for both filters and categories. Selected state uses the
+/// app primary color so users can see at a glance which filter is active.
+class _CompactChip extends StatelessWidget {
+  const _CompactChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool selected;
+  final IconData? icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : AppColors.textPrimary;
+    final bg = selected ? AppColors.primary : AppColors.background;
+    final border = selected ? AppColors.primary : AppColors.border;
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: fg),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreCategoriesSheet extends StatelessWidget {
+  const _MoreCategoriesSheet({
+    required this.categories,
+    required this.selectedSlug,
+  });
+
+  final List<Category> categories;
+  final String? selectedSlug;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              AppStrings.of(context, 'categories'),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final c in categories)
+                  _CompactChip(
+                    label: c.name,
+                    selected: selectedSlug == c.slug,
+                    // Empty string is the "clear selection" signal; non-empty
+                    // is the new slug. See _CompactFilters._openMoreSheet.
+                    onTap: () => Navigator.of(context)
+                        .pop(selectedSlug == c.slug ? '' : c.slug),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

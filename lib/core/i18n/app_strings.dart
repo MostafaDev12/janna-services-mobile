@@ -83,6 +83,8 @@ class AppStrings {
 
     // Standalone noun
     'providers': 'Providers',
+    'more': 'More',
+    'all': 'All',
   };
 
   static const Map<String, String> _ar = {
@@ -160,6 +162,8 @@ class AppStrings {
 
     // Standalone noun
     'providers': 'مزودو الخدمات',
+    'more': 'المزيد',
+    'all': 'الكل',
   };
 
   static String of(BuildContext context, String key) {

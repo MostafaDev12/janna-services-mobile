@@ -191,8 +191,8 @@ The app ships in **English** and **Arabic** (RTL).
 Tap the **translate icon** (`🌐`) in the Home screen's app bar → pick `English` / `العربية`. The selected language is persisted via `shared_preferences`, so the app remembers the choice on the next launch.
 
 If no language has been chosen yet:
-- The app uses **Arabic** if the device's preferred locale is Arabic
-- Otherwise it falls back to **English**
+- The app uses **English** if the device's preferred locale is English
+- Otherwise it falls back to **Arabic** (default for Janna October residents)
 
 ### What changes when you switch
 
@@ -224,29 +224,74 @@ Caller-supplied filters are preserved untouched.
 
 ## 6. Build
 
-### Android — debug APK
+### Development — local Laragon backend
+
 ```bash
-flutter build apk --debug \
-  --dart-define=API_BASE_URL=https://api.janna-october.com/api
+flutter run -d windows --dart-define="API_BASE_URL=http://janna-services-backend.test/api"
+flutter run -d edge    --dart-define="API_BASE_URL=http://janna-services-backend.test/api"
 ```
 
-### Android — release APK / App Bundle
-```bash
-flutter build apk --release \
-  --dart-define=API_BASE_URL=https://api.janna-october.com/api
+(See §3 for other host / device permutations — emulator, physical phone, etc.)
 
+### Production — Google Play app bundle
+
+The release build **requires the upload keystore** — gradle will fail with a
+clear error if `android/key.properties` is missing (no silent fallback to
+debug signing, which would produce a bundle Play rejects). One-time setup:
+
+```bash
+keytool -genkey -v \
+  -keystore android/app/upload-keystore.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+cp android/key.properties.example android/key.properties
+# then edit android/key.properties and fill in the real passwords
+```
+
+Then build:
+
+```bash
+flutter clean
+flutter pub get
+flutter analyze
 flutter build appbundle --release \
-  --dart-define=API_BASE_URL=https://api.janna-october.com/api
+  --dart-define="API_BASE_URL=https://project.cangrow.shop/api"
 ```
 
-### iOS
+Output:
+
+```
+build/app/outputs/bundle/release/app-release.aab
+```
+
+That `.aab` is the file uploaded to Play Console. The full release checklist
+— signing keystore, store listing assets, Data Safety, content rating, etc.
+— is in [`docs/google-play-checklist.md`](docs/google-play-checklist.md).
+
+> ⚠️ **The app cannot be published using local API URLs**
+> (`*.test`, `127.0.0.1`, `10.0.2.2`). Google Play reviewers and end users
+> must be able to reach the backend from the public internet over HTTPS.
+> Every release build must use `--dart-define=API_BASE_URL=https://…`.
+
+### Versioning
+
+`version: 1.0.0+1` in [`pubspec.yaml`](pubspec.yaml). The number after `+` is
+the Android `versionCode` and must strictly increase on every upload:
+
+```
+1.0.0+1   first release
+1.0.1+2   patch
+1.1.0+3   minor
+2.0.0+4   major
+```
+
+### iOS *(out of scope for v1 Play release — kept for reference)*
+
 ```bash
 flutter build ios --release \
-  --dart-define=API_BASE_URL=https://api.janna-october.com/api
+  --dart-define=API_BASE_URL=https://project.cangrow.shop/api
 # then open ios/Runner.xcworkspace in Xcode to archive.
 ```
-
-> For Android release builds you still need a signing config in `android/app/build.gradle` — `flutter create .` plus the Flutter docs on app signing covers it.
 
 ---
 
