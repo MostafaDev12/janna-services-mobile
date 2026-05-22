@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_service.dart';
 import '../../core/network/api_client.dart';
+import '../../core/utils/responsive.dart';
 import '../../shared/models/paginated.dart';
 import '../../shared/models/provider_summary.dart';
 import '../../shared/widgets/empty_view.dart';
@@ -154,16 +155,23 @@ class _SearchScreenState extends State<SearchScreen> {
         icon: Icons.search_off_rounded,
       );
     }
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.72,
-      ),
-      itemCount: _results.length,
-      itemBuilder: (_, i) => ProviderCard(provider: _results[i]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppBreakpoints.maxContent,
+            ),
+            child: GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: providerGridDelegate(w),
+              itemCount: _results.length,
+              itemBuilder: (_, i) => ProviderCard(provider: _results[i]),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -735,8 +735,12 @@ class _CategoryTile extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Mobile featured-providers slider. Uses PageView with viewportFraction so
-/// the next card peeks ~14% on the right — clear "swipe me" affordance —
+/// the next card peeks ~12% on the right — clear "swipe me" affordance —
 /// and snaps to one card per page. Page-indicator dots are shown below.
+///
+/// Height and viewportFraction are derived from the available width so the
+/// 16:9 cover image + text/chip section fit without overflow on a 360 px
+/// phone and still look balanced on wider mobile widths.
 class _FeaturedSlider extends StatefulWidget {
   const _FeaturedSlider({required this.providers});
 
@@ -747,40 +751,75 @@ class _FeaturedSlider extends StatefulWidget {
 }
 
 class _FeaturedSliderState extends State<_FeaturedSlider> {
-  final _controller = PageController(viewportFraction: 0.86);
+  PageController? _controller;
   int _index = 0;
+
+  /// Estimated height of ProviderCard's bottom section (name + category +
+  /// 8 px gap + dense AreaChip + 10/12 padding). Used to pick a SizedBox
+  /// height that exactly fits the 16:9 image plus the text block.
+  static const double _textBlockHeight = 100;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
+  }
+
+  void _ensureController(double viewportFraction) {
+    if (_controller == null ||
+        _controller!.viewportFraction != viewportFraction) {
+      _controller?.dispose();
+      _controller = PageController(
+        viewportFraction: viewportFraction,
+        initialPage: _index,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 240,
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: widget.providers.length,
-            onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: ProviderCard(provider: widget.providers[i]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // <600 = mobile. The featured grid takes over at >=600, but we still
+        // pick a sensible viewportFraction here in case the slider is ever
+        // rendered at a wider width (e.g. landscape phone).
+        final isMobile = w < _Bp.tablet;
+        final viewportFraction = isMobile ? 0.88 : 0.7;
+
+        // Each PageView page = w * viewportFraction. Inside the page,
+        // horizontal: 6 padding shaves 12 px off the card.
+        final cardWidth = (w * viewportFraction) - 12;
+        final imageHeight = cardWidth * 9 / 16;
+        final sliderHeight = imageHeight + _textBlockHeight;
+
+        _ensureController(viewportFraction);
+
+        return Column(
+          children: [
+            SizedBox(
+              height: sliderHeight,
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: widget.providers.length,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: ProviderCard(provider: widget.providers[i]),
+                ),
+              ),
             ),
-          ),
-        ),
-        if (widget.providers.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: _DotsIndicator(
-              count: widget.providers.length,
-              index: _index,
-            ),
-          ),
-      ],
+            if (widget.providers.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _DotsIndicator(
+                  count: widget.providers.length,
+                  index: _index,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

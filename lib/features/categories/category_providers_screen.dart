@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_service.dart';
+import '../../core/utils/responsive.dart';
 import '../../shared/models/category.dart';
 import '../../shared/models/paginated.dart';
 import '../../shared/models/provider_summary.dart';
@@ -120,21 +121,28 @@ class _CategoryProvidersScreenState extends State<CategoryProvidersScreen> {
     }
     return RefreshIndicator(
       onRefresh: () => _load(),
-      child: GridView.builder(
-        controller: _scroll,
-        padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.72,
-        ),
-        itemCount: _items.length + (_loadingMore ? 1 : 0),
-        itemBuilder: (_, i) {
-          if (i >= _items.length) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return ProviderCard(provider: _items[i]);
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppBreakpoints.maxContent,
+              ),
+              child: GridView.builder(
+                controller: _scroll,
+                padding: const EdgeInsets.all(12),
+                gridDelegate: providerGridDelegate(w),
+                itemCount: _items.length + (_loadingMore ? 1 : 0),
+                itemBuilder: (_, i) {
+                  if (i >= _items.length) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return ProviderCard(provider: _items[i]);
+                },
+              ),
+            ),
+          );
         },
       ),
     );

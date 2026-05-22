@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/i18n/app_strings.dart';
+import '../../core/utils/responsive.dart';
 import '../../shared/widgets/empty_view.dart';
 import '../../shared/widgets/provider_card.dart';
 import 'favorites_service.dart';
@@ -23,16 +24,23 @@ class FavoritesScreen extends StatelessWidget {
               icon: Icons.favorite_border_rounded,
             );
           }
-          return GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.72,
-            ),
-            itemCount: favs.length,
-            itemBuilder: (_, i) => ProviderCard(provider: favs[i]),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppBreakpoints.maxContent,
+                  ),
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate: providerGridDelegate(w),
+                    itemCount: favs.length,
+                    itemBuilder: (_, i) => ProviderCard(provider: favs[i]),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

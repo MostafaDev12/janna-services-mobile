@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/i18n/locale_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/responsive.dart';
 import '../../shared/models/category.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../../shared/widgets/empty_view.dart';
@@ -66,16 +67,29 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           }
           return RefreshIndicator(
             onRefresh: _refresh,
-            child: GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.05,
-              ),
-              itemCount: categories.length,
-              itemBuilder: (_, i) => _CategoryTile(category: categories[i]),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                final tablet = isTabletWidth(w);
+                // Cap content width on huge tablets / desktop so cards don't
+                // stretch edge-to-edge.
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppBreakpoints.maxContent,
+                    ),
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate: categoryGridDelegate(w),
+                      itemCount: categories.length,
+                      itemBuilder: (_, i) => _CategoryTile(
+                        category: categories[i],
+                        wide: tablet,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           );
         },
@@ -85,8 +99,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.category});
+  const _CategoryTile({required this.category, this.wide = false});
+
   final Category category;
+
+  /// `true` on tablet+ — renders a compact row tile (icon left, text right)
+  /// that fits the ~130 px tile height. `false` keeps the original mobile
+  /// 2-column column layout.
+  final bool wide;
 
   @override
   Widget build(BuildContext context) {
@@ -101,33 +121,73 @@ class _CategoryTile extends StatelessWidget {
           ),
         ),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(wide ? 12 : 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
           ),
+          child: wide ? _buildWide(context) : _buildColumn(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _icon(double size) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.chipBg,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.center,
+        child: category.imageUrl != null
+            ? AppNetworkImage(
+                url: category.imageUrl,
+                width: size,
+                height: size,
+                borderRadius: BorderRadius.circular(14),
+              )
+            : Icon(Icons.category_rounded,
+                color: AppColors.chipFg, size: size * 0.5),
+      );
+
+  Widget _buildColumn(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _icon(56),
+        const Spacer(),
+        Text(
+          category.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          context.trf('n_providers', {'n': '${category.providersCount ?? 0}'}),
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWide(BuildContext context) {
+    return Row(
+      children: [
+        _icon(52),
+        const SizedBox(width: 12),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.chipBg,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: category.imageUrl != null
-                    ? AppNetworkImage(
-                        url: category.imageUrl,
-                        width: 56,
-                        height: 56,
-                        borderRadius: BorderRadius.circular(14),
-                      )
-                    : const Icon(Icons.category_rounded,
-                        color: AppColors.chipFg, size: 28),
-              ),
-              const Spacer(),
               Text(
                 category.name,
                 maxLines: 2,
@@ -139,8 +199,8 @@ class _CategoryTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                context.trf('n_providers',
-                    {'n': '${category.providersCount ?? 0}'}),
+                context.trf(
+                    'n_providers', {'n': '${category.providersCount ?? 0}'}),
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
@@ -149,7 +209,7 @@ class _CategoryTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

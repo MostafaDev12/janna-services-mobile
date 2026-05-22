@@ -37,51 +37,57 @@ class ProviderCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Stack(
-                children: [
-                  AppNetworkImage(
-                    url: provider.coverImageUrl,
-                    width: double.infinity,
-                    height: 130,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(14),
-                    ),
-                  ),
-                  if (provider.isFeatured)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star_rounded,
-                                size: 13, color: Colors.white),
-                            const SizedBox(width: 3),
-                            Text(
-                              AppStrings.of(context, 'featured'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+              // 16:9 keeps cover images consistently sized across mobile /
+              // tablet — the image grows with card width instead of being
+              // pinned to 130 px and looking lost on wide tablet cards.
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppNetworkImage(
+                      url: provider.coverImageUrl,
+                      width: double.infinity,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(14),
                       ),
                     ),
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: _FavoriteCircleButton(provider: provider),
-                  ),
-                ],
+                    if (provider.isFeatured)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star_rounded,
+                                  size: 13, color: Colors.white),
+                              const SizedBox(width: 3),
+                              Text(
+                                AppStrings.of(context, 'featured'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: _FavoriteCircleButton(provider: provider),
+                    ),
+                  ],
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -103,6 +109,8 @@ class ProviderCard extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           provider.categoryName!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
