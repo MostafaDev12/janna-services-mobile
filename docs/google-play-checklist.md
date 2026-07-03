@@ -2,12 +2,12 @@
 
 > ⚠️ **Hard requirement:** the app cannot be submitted with a local backend URL.
 > The backend must be publicly accessible over HTTPS:
-> **https://project.cangrow.shop/api**
+> **https://janna.cangrow.shop/api**
 >
 > Local URLs (`http://janna-services-backend.test`, `http://127.0.0.1:8000`,
 > `http://10.0.2.2:8000`) are unreachable to Google Play reviewers and to real
 > users. Every release build must use
-> `--dart-define=API_BASE_URL=https://project.cangrow.shop/api`.
+> `--dart-define=API_BASE_URL=https://janna.cangrow.shop/api`.
 
 ---
 
@@ -17,7 +17,7 @@
 |---|---|
 | Package name (immutable once published) | **com.jannaoctober.services** |
 | App version | **1.0.0 (versionCode 1)** — from [`pubspec.yaml`](../pubspec.yaml) `version: 1.0.0+1` |
-| Production API URL | **https://project.cangrow.shop/api** |
+| Production API URL | **https://janna.cangrow.shop/api** |
 | App bundle path | `build/app/outputs/bundle/release/app-release.aab` |
 | compileSdk / targetSdk | **36 / 36** (set in [`android/app/build.gradle.kts`](../android/app/build.gradle.kts)) |
 | minSdk | Flutter default (21) |
@@ -63,7 +63,7 @@ flutter clean
 flutter pub get
 flutter analyze
 flutter build appbundle --release \
-  --dart-define="API_BASE_URL=https://project.cangrow.shop/api"
+  --dart-define="API_BASE_URL=https://janna.cangrow.shop/api"
 ```
 
 The gradle build will **fail with a clear error** if `android/key.properties`
@@ -98,7 +98,7 @@ produced by accident.
 
 - [ ] **Privacy Policy URL** — **required** even for v1 (the app loads
       provider data and images over the network). Host one on the public site
-      (e.g. `https://project.cangrow.shop/privacy`) and add the URL in
+      (e.g. `https://janna.cangrow.shop/privacy`) and add the URL in
       Play Console → App content → Privacy policy.
 - [ ] **Data Safety form** — required. Declare:
       - Favorites are stored **locally only** (`shared_preferences`), no PII
@@ -128,14 +128,14 @@ produced by accident.
 - [ ] Install the app on a **physical Android device** from the Play testing
       link (not via `flutter install`).
 - [ ] Test the app on **mobile data** (4G/5G, not only local Wi-Fi) to prove
-      that `https://project.cangrow.shop/api` is reachable from the public
+      that `https://janna.cangrow.shop/api` is reachable from the public
       internet.
 - [ ] Verify **English** UI loads Home, Categories, a provider detail with
       gallery, Search, Favorites, and Important Numbers.
 - [ ] Toggle to **Arabic** and verify RTL layout, translated strings, and
       that the API re-fetches with `?lang=ar`.
 - [ ] Verify **images and gallery** load (cover image, provider photos,
-      menu/products) — these come from `https://project.cangrow.shop/storage/...`
+      menu/products) — these come from `https://janna.cangrow.shop/storage/...`
       via `cached_network_image`.
 - [ ] Verify the **phone / WhatsApp / map buttons** work on a provider with
       filled-in contact details.
