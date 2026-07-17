@@ -255,7 +255,7 @@ flutter clean
 flutter pub get
 flutter analyze
 flutter build appbundle --release \
-  --dart-define="API_BASE_URL=https://janna.cangrow.shop/api"
+  --dart-define="API_BASE_URL=https://janna.oybgiveaways.com/api"
 ```
 
 Output:
@@ -289,7 +289,7 @@ the Android `versionCode` and must strictly increase on every upload:
 
 ```bash
 flutter build ios --release \
-  --dart-define=API_BASE_URL=https://janna.cangrow.shop/api
+  --dart-define=API_BASE_URL=https://janna.oybgiveaways.com/api
 # then open ios/Runner.xcworkspace in Xcode to archive.
 ```
 
