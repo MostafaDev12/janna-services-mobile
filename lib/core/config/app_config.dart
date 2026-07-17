@@ -3,7 +3,7 @@
 /// The API base URL is injected at build time via `--dart-define`:
 ///
 ///   flutter build appbundle --release \
-///     --dart-define=API_BASE_URL=https://janna.cangrow.shop/api
+///     --dart-define=API_BASE_URL=https://janna.oybgiveaways.com/api
 ///
 /// For development, pass the local Laragon host instead — see README §3.
 class AppConfig {
@@ -14,7 +14,7 @@ class AppConfig {
   /// build that forgets the flag still ships a working app instead of a
   /// localhost URL Google Play reviewers cannot reach.
   static const String defaultApiBaseUrl =
-      'https://janna.cangrow.shop/api';
+      'https://janna.oybgiveaways.com/api';
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
